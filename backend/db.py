@@ -12,14 +12,3 @@ try:
 except Exception as e:
     print(e)
     
-db = client["weather_db"]
-weather_test = db["weather_test"]
-
-testDoc = {
-    "name": {"first": "Alan", "middle": "Bucky", "last": "Wake"}
-}
-weather_test.insert_one(testDoc)
-
-result = weather_test.find_one({"name.first": "Alan"})
-
-print("Document found: \n", result)

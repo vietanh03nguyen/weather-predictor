@@ -1,2 +1,4 @@
 # weather-predictor
-Predicts weather ie. Rain chance at your location in realtime using Linear Regression pulled from data on Open-Meteo.com, periodically retrains using stored data.
+
+Dự đoán các biến thời tiết thời gian thực dựa vào dữ liệu từ Open-meteo.com
+
