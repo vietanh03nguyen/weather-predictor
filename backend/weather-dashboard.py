@@ -42,6 +42,6 @@ if latest_record:
         st.metric("🧭 Surface Pressure (hPa)", f"{latest_record['surface_pressure_hPa']}")
 
     st.markdown("---")
-    st.caption("🔄 Weather data auto-refreshes every minute.")
+    st.caption("🔄 Weather data auto-refreshes every hour.")
 else:
     st.warning("⚠️ No weather data available yet.")
