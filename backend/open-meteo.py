@@ -1,54 +1,67 @@
-import openmeteo_requests
-import requests_cache
-import pandas as pd
-from retry_requests import retry
-from db import weather_test
+import requests
+from pymongo import MongoClient
+from datetime import datetime
+from dateutil import parser
 
-cache_session = requests_cache.CachedSession('.cache', expire_after=3600)
-retry_session = retry(cache_session, retries = 5, backoff_factor=0.2)
-openmeteo = openmeteo_requests.Client(session=retry_session)
+# === 1. MongoDB Setup ===
+client = MongoClient("mongodb+srv://vietanh03nguyen:vietanh03nguyen@cluster0.olurtc6.mongodb.net/?retryWrites=true&w=majority")
+db = client["weather_db"]
+collection = db["realtime_weather"]
 
-url = "https://historical-forecast-api.open-meteo.com/v1/forecast"
-params = {
-	"latitude": 21.0245,
-	"longitude": 105.8412,
-	"start_date": "2022-01-01",
-	"end_date": "2024-12-31",
-	"hourly": ["temperature_2m", "relative_humidity_2m", "dew_point_2m", "precipitation"],
-	"timezone": "auto"
-}
+# === 2. Open-Meteo API Setup ===
+latitude = 21.0285     # Replace with your location
+longitude = 105.8542
+timezone = "auto"
 
+weather_params = [
+    "temperature_2m", "relative_humidity_2m", "surface_pressure",
+    "pressure_msl", "wind_speed_10m", "cloud_cover", "precipitation_probability"
+]
 
-responses = openmeteo.weather_api(url, params)
+url = (
+    f"https://api.open-meteo.com/v1/forecast?"
+    f"latitude={latitude}&longitude={longitude}"
+    f"&hourly={','.join(weather_params)}"
+    f"&timezone={timezone}"
+)
 
-response = responses[0]
-print(f"Coordinates {response.Latitude()}°N {response.Longitude()}°E")
-print(f"Elevation {response.Elevation()} m asl")
-print(f"Timezone {response.Timezone()}{response.TimezoneAbbreviation()}")
-print(f"Timezone difference to GMT+0 {response.UtcOffsetSeconds()} s")
+# === 3. Fetch Latest Forecast and Store Only Newest Hour ===
+def fetch_latest_and_store():
+    response = requests.get(url)
+    data = response.json()
 
-# Process hourly data. The order of variables needs to be the same as requested.
-hourly = response.Hourly()
-hourly_temperature_2m = hourly.Variables(0).ValuesAsNumpy()
-hourly_relative_humidity_2m = hourly.Variables(1).ValuesAsNumpy()
-hourly_dew_point_2m = hourly.Variables(2).ValuesAsNumpy()
-hourly_precipitation = hourly.Variables(3).ValuesAsNumpy()
+    hourly = data.get("hourly", {})
+    times = hourly.get("time", [])
 
-hourly_data = {"date": pd.date_range(
-	start = pd.to_datetime(hourly.Time(), unit = "s", utc = True),
-	end = pd.to_datetime(hourly.TimeEnd(), unit = "s", utc = True),
-	freq = pd.Timedelta(seconds = hourly.Interval()),
-	inclusive = "left"
-).tz_convert("Asia/Bangkok")}
+    if not times:
+        print("⚠️ No forecast data available.")
+        return
 
-hourly_data["temperature_2m"] = hourly_temperature_2m
-hourly_data["relative_humidity_2m"] = hourly_relative_humidity_2m
-hourly_data["dew_point_2m"] = hourly_dew_point_2m
-hourly_data["precipitation"] = hourly_precipitation
+    # Get the latest timestamp (last item)
+    latest_time_str = times[-1]
+    latest_time = parser.isoparse(latest_time_str)
 
-hourly_dataframe = pd.DataFrame(data = hourly_data)
+    # Check if data with this timestamp already exists
+    if collection.find_one({"timestamp": latest_time}):
+        print(f"⏳ Data for {latest_time} already exists. Skipping insert.")
+        return
 
-# hourly_dataframe.to_csv("./weather_data_training.csv", encoding="utf-8", index=False)
-print(hourly_dataframe)
+    # Insert latest record
+    idx = len(times) - 1
+    record = {
+        "timestamp": latest_time,
+        "temperature_2m_C": hourly["temperature_2m"][idx],
+        "relative_humidity_2m_percent": hourly["relative_humidity_2m"][idx],
+        "surface_pressure_hPa": hourly["surface_pressure"][idx],
+        "pressure_msl_hPa": hourly["pressure_msl"][idx],
+        "wind_speed_10m_kmh": hourly["wind_speed_10m"][idx],
+        "cloud_cover_percent": hourly["cloud_cover"][idx],
+        "precipitation_probability_percent": hourly["precipitation_probability"][idx]
+    }
 
-# weather_test.insert_many
+    collection.insert_one(record)
+    print(f"✅ Inserted data for {latest_time}")
+
+# === 4. Run Script ===
+if __name__ == "__main__":
+    fetch_latest_and_store()

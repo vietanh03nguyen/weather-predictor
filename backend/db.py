@@ -12,3 +12,10 @@ try:
 except Exception as e:
     print(e)
     
+    
+db = client['weather_db']
+col = db['realtime_weather']
+
+
+
+
