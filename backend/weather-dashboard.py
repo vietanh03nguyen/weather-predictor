@@ -1,38 +1,57 @@
-from func import get_coordinates, get_weather_data
+from pymongo import MongoClient
 import streamlit as st
-import pandas as pd
-from datetime import timedelta,datetime
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from streamlit_autorefresh import st_autorefresh
+import os
+import time
 
-st.title("Real-time Weather Dashboard")
-st.write("Get realtime updates to weather near you!")
+st.set_page_config(page_title="Current Weather", layout="centered")
 
-city_name = st.text_input("Enter City Name")
-forecast_duration = st.slider("Select forecast duration (hours)", min_value=12, max_value=48, value=24, step=12)
-parameter_options = st.multiselect(
-    "Choose weather parameters to display:",
-    options = ["Temperature (C)", "Humidity (%)", "Wind Speed (m/s)"],
-    default = ["Temperature (C)", "Humidity (%)"]
-)
+# Auto-refresh every 60 seconds
+st_autorefresh(interval=1 * 1000, key="refresh")
 
-if st.button("Get Weather Data"):
-    lat, lon = get_coordinates(city_name)
-    if lat and lon:
-        data = get_weather_data(lat, lon, forecast_duration)
-        if data:
-            times = [datetime.now() + timedelta(hours=i) for i in range(forecast_duration)]
-            df = pd.DataFrame({"Time": times})
+# MongoDB Setup
+MONGO_URI = "mongodb+srv://vietanh03nguyen:vietanh03nguyen@cluster0.olurtc6.mongodb.net/?retryWrites=true&w=majority"
+client = MongoClient(MONGO_URI)
+db = client["weather_db"]
+collection = db["realtime_weather"]
 
-            if "Temperature (°C)" in parameter_options:
-                df["Temperature (°C)"] = data['hourly']['temperature_2m'][:forecast_duration]
-                st.subheader(f"Temperature Forecast")
-                st.line_chart(df.set_index("Time")["Temperature (°C)"])
+# Load latest record
+latest_record = collection.find_one(sort=[("timestamp", -1)])
 
-            if "Humidity (%)" in parameter_options:
-                df["Humidity (%)"] = data['hourly']['relative_humidity_2m'][:forecast_duration]
-                st.subheader(f"HumidityForecast")
-                st.line_chart(df.set_index("Time")["Humidity (%)"])
+# Streamlit app title
+st.title("🌤️ Current Weather Data")
 
-            if "Wind Speed (m/s)" in parameter_options:
-                df["Wind Speed (m/s)"] = data['hourly']['wind_speed_10m'][:forecast_duration]
-                st.subheader(f"Wind SpeedForecast")
-                st.line_chart(df.set_index("Time")["Wind Speed (m/s)"])
+# Timezone
+local_tz = ZoneInfo("Asia/Ho_Chi_Minh")  # Change to your local timezone
+
+# Create an empty placeholder to update time
+time_placeholder = st.empty()
+
+if latest_record:
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.metric("🌡️ Temperature (°C)", f"{latest_record['temperature_2m_C']} °C")
+        st.metric("💧 Humidity (%)", f"{latest_record['relative_humidity_2m_percent']} %")
+        st.metric("☁️ Cloud Cover (%)", f"{latest_record['cloud_cover_percent']} %")
+
+    with col2:
+        st.metric("🌬️ Wind Speed (km/h)", f"{latest_record['wind_speed_10m_kmh']} km/h")
+        st.metric("🌧️ Precipitation Probability", f"{latest_record['precipitation_probability_percent']} %")
+        st.metric("🧭 Surface Pressure (hPa)", f"{latest_record['surface_pressure_hPa']}")
+
+    st.markdown("---")
+    st.caption("⏱️ Time updates every second | Weather data refreshes every 60 seconds")
+else:
+    st.warning("⚠️ No weather data available yet.")
+
+# Update time every second (in-place only)
+for i in range(60):
+    local_time = datetime.now(local_tz)
+    time_placeholder.subheader(f"📅 Local Time: {local_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    time.sleep(1)
+
+# Display weather only once per refresh
+
