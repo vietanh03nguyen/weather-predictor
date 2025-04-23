@@ -9,7 +9,7 @@ import time
 st.set_page_config(page_title="Current Weather", layout="centered")
 
 # Auto-refresh every 60 seconds
-st_autorefresh(interval=1 * 1000, key="refresh")
+st_autorefresh(interval= 3600 * 1000, key="refresh")
 
 # MongoDB Setup
 MONGO_URI = "mongodb+srv://vietanh03nguyen:vietanh03nguyen@cluster0.olurtc6.mongodb.net/?retryWrites=true&w=majority"
