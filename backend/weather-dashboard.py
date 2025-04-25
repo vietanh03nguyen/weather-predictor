@@ -116,11 +116,6 @@ for hour in range(hours_ahead):
     current = forecast_df.loc[forecast_times[hour]]
 
 # Display forecast table
-st.markdown("### 🔮 Predicted Weather")
-st.dataframe(forecast_df.round(2))
-
-# -------------------- Charts in Tabs --------------------
-
 st.markdown("### 📈 Forecast Charts")
 tabs = st.tabs([f"{feature.title()}" for feature in features])
 
@@ -133,4 +128,9 @@ for i, feature in enumerate(features):
         ax.set_ylabel(feature)
         ax.grid(True)
         st.pyplot(fig)
+st.markdown("### 🔮 Predicted Weather")
+st.dataframe(forecast_df.round(2))
+
+
+
 
