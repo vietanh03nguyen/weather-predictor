@@ -7,6 +7,7 @@ import numpy as np
 import joblib
 import matplotlib.pyplot as plt
 from streamlit_autorefresh import st_autorefresh
+import requests
 
 # -------------------- Setup --------------------
 
@@ -22,6 +23,20 @@ features = list(models.keys())
 MONGO_URI = "mongodb+srv://vietanh03nguyen:vietanh03nguyen@cluster0.olurtc6.mongodb.net/?retryWrites=true&w=majority"
 client = MongoClient(MONGO_URI)
 collection = client["weather_db"]["realtime_weather"]
+
+lat, lon = 21.00, 105.88  # Hanoi coordinates
+open_meteo_url = (
+    f"https://api.open-meteo.com/v1/forecast?"
+    f"latitude={lat}&longitude={lon}&current=apparent_temperature&timezone=Asia%2FBangkok"
+)
+
+try:
+    response = requests.get(open_meteo_url)
+    response.raise_for_status()
+    current_apparent_temp = response.json()["current"]["apparent_temperature"]
+except Exception as e:
+    st.error("⚠️ Could not fetch current apparent temperature.")
+    current_apparent_temp = None
 
 # Get latest records (last 2 to enable lag)
 latest_data = list(collection.find().sort("timestamp", -1).limit(2))
@@ -60,6 +75,8 @@ st.subheader(f"📅Hanoi Local Time: {local_time.strftime('%Y-%m-%d %H:%M')}")
 # -------------------- Current Weather --------------------
 st.markdown("---")
 st.markdown("### 🌡️ Current Weather")
+if current_apparent_temp is not None:
+    st.metric("Feels Like (°C)", f"{current_apparent_temp:.2f}")
 col1, col2 = st.columns(2)
 with col1:
     st.metric("Temperature (°C)", f"{df.iloc[-1]['temp']:.2f}")
