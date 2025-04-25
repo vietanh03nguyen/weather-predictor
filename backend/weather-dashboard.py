@@ -15,7 +15,7 @@ st.set_page_config(page_title="🌦️ Weather Forecast", layout="centered")
 st_autorefresh(interval=60 * 1000, key="refresh")
 
 # Load the trained model
-models = joblib.load("weather_models.pkl")
+models = joblib.load("./weather_models.pkl")
 features = list(models.keys())
 
 # MongoDB setup
