@@ -73,7 +73,7 @@ with col2:
 
 
 # Slider for prediction horizon
-hours_ahead = st.slider("⏱️ Forecast range (hours)", min_value=1, max_value=24, value=6)
+hours_ahead = st.slider("⏱️ Forecast range (hours)", min_value=1, max_value=96, value=6)
 
 # -------------------- Prediction --------------------
 
