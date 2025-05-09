@@ -16,7 +16,7 @@ st.set_page_config(page_title="🌦️ Weather Forecast", layout="centered")
 st_autorefresh(interval=60 * 1000, key="refresh")
 
 # Load the trained model
-models = joblib.load("./weather_models.pkl")
+models = joblib.load("./forecast_objs.pkl")
 features = list(models.keys())
 
 # MongoDB setup
@@ -90,7 +90,7 @@ with col2:
 
 
 # Slider for prediction horizon
-hours_ahead = st.slider("⏱️ Forecast range (hours)", min_value=1, max_value=96, value=6)
+hours_ahead = st.slider("⏱️ Forecast range (hours)", min_value=1, max_value=48, value=12)
 
 # -------------------- Prediction --------------------
 
